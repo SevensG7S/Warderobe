@@ -186,7 +186,7 @@
   }
   .look-collage .slot{display:flex;align-items:center;justify-content:center;}
   .look-collage .slot svg{width:22px;height:22px;}
-  .look-collage .slot img{width:100%;height:100%;object-fit:cover;}
+  .look-collage .slot img{width:100%;height:100%;object-fit:contain;padding:4px;}
   .look-info{flex:1;min-width:0;}
   .look-info .name{font-family:'Space Grotesk'; font-weight:700; font-size:16.5px; color:var(--ink); margin:0 0 4px;}
   .look-info .meta{font-family:'Space Mono'; font-size:10px; color:var(--ink-soft); letter-spacing:.03em; text-transform:uppercase;}
@@ -286,7 +286,7 @@
     aspect-ratio:1; border-radius:18px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px;
   }
   .look-detail-collage .slot svg{width:34px;height:34px;}
-  .look-detail-collage .slot img{width:100%;height:100%;object-fit:cover;border-radius:18px;}
+  .look-detail-collage .slot img{width:100%;height:100%;object-fit:contain;padding:10px;}
   .look-detail-collage .slot .lbl{font-family:'Space Mono'; font-size:9px; color:var(--ink-soft); text-transform:uppercase;}
 
   .profile-view{display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:26px;}
@@ -470,23 +470,10 @@
   function seed(){
     return {
       wardrobe:{
-        headwear:[
-          {id:'h1', name:'Бейсболка', image:null},
-          {id:'h2', name:'Шапка', image:null}
-        ],
-        tops:[
-          {id:'t1', name:'Футболка', image:null},
-          {id:'t2', name:'Куртка', image:null},
-          {id:'t3', name:'Худи', image:null}
-        ],
-        bottoms:[
-          {id:'b1', name:'Джинсы', image:null},
-          {id:'b2', name:'Чинос', image:null}
-        ],
-        shoes:[
-          {id:'s1', name:'Кроссовки', image:null},
-          {id:'s2', name:'Ботинки', image:null}
-        ]
+        headwear:[],
+        tops:[],
+        bottoms:[],
+        shoes:[]
       },
       looks:[]
     };
@@ -497,17 +484,28 @@
   let lookSelection = {headwear:null, tops:null, bottoms:null, shoes:null};
   let currentFilter = 'all';
 
-  async function save(){
-    try{ if(window.storage){ await window.storage.set('wardrobe-state-v3', JSON.stringify(state), false); } }
-    catch(e){}
-  }
-  async function load(){
-    try{
-      if(window.storage){
-        const r = await window.storage.get('wardrobe-state-v3', false);
-        if(r && r.value){ state = JSON.parse(r.value); }
+  // Сохранение в память браузера
+  function save(){
+    try { 
+      localStorage.setItem('wardrobe-state-v4', JSON.stringify(state)); 
+    } catch(e) {
+      console.error('Ошибка сохранения:', e);
+      if (e.name === 'QuotaExceededError') {
+        alert('Память браузера переполнена! Слишком много тяжелых фото. Удали лишнее или используй скриншоты меньшего размера.');
       }
-    }catch(e){}
+    }
+  }
+
+  // Загрузка из памяти браузера при входе
+  function load(){
+    try {
+      const saved = localStorage.getItem('wardrobe-state-v4');
+      if(saved) { 
+        state = JSON.parse(saved); 
+      }
+    } catch(e) {
+      console.error('Ошибка загрузки:', e);
+    }
     renderAll();
   }
 
@@ -577,7 +575,7 @@
     if(!id) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
     const it = findItem(cat,id);
     if(!it) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
-    return `<div class="slot" style="background:${CATS[cat].soft};">${it.image ? `<img src="${it.image}">` : icon(cat)}</div>`;
+    return `<div class="slot" style="background:${CATS[cat].soft};">${it.image ? `<img src="${it.image}" style="object-fit:contain;padding:4px;">` : icon(cat)}</div>`;
   }
 
   function lookCardHTML(look){
