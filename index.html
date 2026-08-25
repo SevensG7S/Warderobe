@@ -285,7 +285,7 @@
     background:rgba(255,75,92,.08); color:var(--danger); font-family:'Inter'; font-weight:700; font-size:13.5px; cursor:pointer;
   }
 
-  /* ---------- ДИЗАЙН ПАПКИ ЛУКА С АКЦЕНТОМ НА ФОТО И УДАЛЕНИЕМ ---------- */
+  /* ---------- КАРТОЧКИ ВНУТРИ ЛУКА С ФОНОМ #F4F4F4 ---------- */
   .look-canvas {
     display: flex;
     flex-direction: column;
@@ -318,7 +318,7 @@
   }
   .big-cloth-card.empty {
     border: 1.5px dashed rgba(21,19,31,.15);
-    background: rgba(255,255,255,.4);
+    background: #f4f4f4;
     height: 90px;
     align-items: center;
     justify-content: center;
@@ -326,7 +326,7 @@
     transition: background .15s var(--ease);
   }
   .big-cloth-card.empty:active {
-    background: rgba(255,255,255,.8);
+    background: #eaeaea;
   }
   .big-cloth-card.empty span {
     font-family: 'Space Mono', monospace;
@@ -339,7 +339,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px;
+    padding: 16px;
+    background: #f4f4f4 !important; /* Единый нейтральный фон для всех категорий */
   }
   .big-cloth-img img {
     max-width: 100%;
@@ -353,7 +354,7 @@
   .big-cloth-footer {
     padding: 12px 18px;
     border-top: 1px solid rgba(21,19,31,.05);
-    background: rgba(255,255,255,.9);
+    background: #ffffff;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -368,7 +369,6 @@
     font-size: 11px;
     color: var(--ink-soft);
   }
-  /* Крестик удаления вещи из лука */
   .remove-from-look {
     position: absolute;
     top: 12px;
@@ -571,7 +571,6 @@
     return `<svg viewBox="0 0 100 100">${shapePath(cat).split('M').join(CATS[cat].main==='var(--violet)'?'#6C4CFF':CATS[cat].main==='var(--pink)'?'#FF5D8F':CATS[cat].main==='var(--teal)'?'#0FBF9F':'#FFA43D')}</svg>`;
   }
 
-  /* ---------- INDEXED DB ---------- */
   const DB_NAME = 'WardrobeDB';
   const DB_VERSION = 1;
   const STORE_NAME = 'app_state';
@@ -614,7 +613,6 @@
     }
   }
 
-  /* ---------- СЖАТИЕ ФОТО ---------- */
   function compressImage(file, maxWidth = 600, quality = 0.8) {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -655,7 +653,7 @@
   let state = seed();
   let tempPhoto = null;
   let lookSelection = {headwear:[], tops:[], bottoms:[], shoes:[]};
-  let editingLookId = null; // ID редактируемого лука (если редактируем существующий)
+  let editingLookId = null;
   let currentFilter = 'all';
 
   function save(){
@@ -729,7 +727,7 @@
     if(!cat || !id) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
     const it = findItem(cat,id);
     if(!it) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
-    return `<div class="slot" style="background:${CATS[cat].soft};">${it.image ? `<img src="${it.image}" style="object-fit:contain;padding:4px;">` : icon(cat)}</div>`;
+    return `<div class="slot" style="background:#f4f4f4;">${it.image ? `<img src="${it.image}" style="object-fit:contain;padding:4px;">` : icon(cat)}</div>`;
   }
 
   function lookCardHTML(look){
@@ -872,7 +870,6 @@
   function openLookSheet(random, editLook = null){
     editingLookId = editLook ? editLook.id : null;
     if(editLook){
-      // Подставляем текущие вещи лука для редактирования
       lookSelection = {
         headwear: [...(editLook.items.headwear || [])],
         tops: [...(editLook.items.tops || [])],
@@ -932,7 +929,6 @@
       };
 
       if(editingLookId) {
-        // Обновляем существующий лук
         const look = state.looks.find(l => l.id === editingLookId);
         if(look) {
           look.name = name;
@@ -940,9 +936,8 @@
         }
         save();
         renderAll();
-        openLookDetail(editingLookId); // Возвращаемся в просмотр лука с обновлением
+        openLookDetail(editingLookId);
       } else {
-        // Создаем новый
         const d = new Date();
         const dateLabel = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
         state.looks.push({id:uid(), name, items:itemsCopy, dateLabel});
@@ -953,7 +948,6 @@
     });
   }
 
-  /* ---------- ДИЗАЙН ПАПКИ ЛУКА (БОЛЬШИЕ ФОТО + КРЕСТИКИ И РЕДАКТИРОВАНИЕ) ---------- */
   function lookDetailHTML(look){
     const order = ['headwear','tops','bottoms','shoes'];
     
@@ -979,7 +973,7 @@
             return `
               <div class="big-cloth-card">
                 <span class="remove-from-look" data-removestuff="${look.id}:${cat}:${id}" title="Убрать из лука">×</span>
-                <div class="big-cloth-img" style="background:${CATS[cat].soft};">
+                <div class="big-cloth-img">
                   ${it.image ? `<img src="${it.image}">` : icon(cat)}
                 </div>
                 <div class="big-cloth-footer">
@@ -1007,20 +1001,17 @@
     if(!look) return;
     openSheet(lookDetailHTML(look));
 
-    // Кнопка удаления лука целиком
     sheetInner.querySelector('[data-deletelook]').addEventListener('click', ()=>{
       state.looks = state.looks.filter(l=>l.id!==id);
       save(); renderAll(); closeSheet();
     });
 
-    // Кнопка открытия редактирования лука
     sheetInner.querySelectorAll('[data-editlookbtn]').forEach(btn => {
       btn.addEventListener('click', ()=>{
         openLookSheet(false, look);
       });
     });
 
-    // Удаление конкретной вещи из лука (крестик)
     sheetInner.querySelectorAll('[data-removestuff]').forEach(btn => {
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -1030,7 +1021,7 @@
           targetLook.items[cat] = targetLook.items[cat].filter(i => i !== itemId);
           save();
           renderAll();
-          openLookDetail(lookId); // Мгновенно обновляем окно
+          openLookDetail(lookId);
         }
       });
     });
