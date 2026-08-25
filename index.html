@@ -99,7 +99,7 @@
     box-shadow:0 18px 30px rgba(108,76,255,.35);
   }
   .cta-add:active{transform:scale(.98);}
-  .cta-add .plus-badge{
+  .plus-badge{
     flex:none; width:46px;height:46px;border-radius:16px; background:rgba(255,255,255,.22);
     display:flex;align-items:center;justify-content:center;
   }
@@ -285,7 +285,6 @@
     background:rgba(255,75,92,.08); color:var(--danger); font-family:'Inter'; font-weight:700; font-size:13.5px; cursor:pointer;
   }
 
-  /* ---------- КАРТОЧКИ ВНУТРИ ЛУКА С ФОНОМ #F4F4F4 ---------- */
   .look-canvas {
     display: flex;
     flex-direction: column;
@@ -340,7 +339,7 @@
     align-items: center;
     justify-content: center;
     padding: 16px;
-    background: #f4f4f4 !important; /* Единый нейтральный фон для всех категорий */
+    background-color: #f4f4f4;
   }
   .big-cloth-img img {
     max-width: 100%;
@@ -571,6 +570,7 @@
     return `<svg viewBox="0 0 100 100">${shapePath(cat).split('M').join(CATS[cat].main==='var(--violet)'?'#6C4CFF':CATS[cat].main==='var(--pink)'?'#FF5D8F':CATS[cat].main==='var(--teal)'?'#0FBF9F':'#FFA43D')}</svg>`;
   }
 
+  /* ---------- INDEXED DB ---------- */
   const DB_NAME = 'WardrobeDB';
   const DB_VERSION = 1;
   const STORE_NAME = 'app_state';
@@ -613,7 +613,8 @@
     }
   }
 
-  function compressImage(file, maxWidth = 600, quality = 0.8) {
+  /* ---------- АВТОМАТИЧЕСКОЕ УДАЛЕНИЕ ФОНА (УЛУЧШЕННАЯ ТОЧНОСТЬ) ---------- */
+  function removeBackgroundAuto(file, maxWidth = 600) {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -635,7 +636,70 @@
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', quality));
+
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const data = imgData.data;
+
+          // Замеряем цвет фона по краям
+          const corners = [0, (w - 1) * 4, ((h - 1) * w) * 4, ((h - 1) * w + (w - 1)) * 4];
+          let bgR = 0, bgG = 0, bgB = 0;
+          corners.forEach(idx => {
+            bgR += data[idx];
+            bgG += data[idx + 1];
+            bgB += data[idx + 2];
+          });
+          bgR /= 4; bgG /= 4; bgB /= 4;
+
+          // Уменьшенный порог во избежание съедания ткани светлых оттенков
+          const tolerance = 18;
+          const visited = new Uint8Array(w * h);
+          const queue = [];
+
+          for (let x = 0; x < w; x++) {
+            queue.push(x, 0);
+            queue.push(x, h - 1);
+          }
+          for (let y = 0; y < h; y++) {
+            queue.push(0, y);
+            queue.push(w - 1, y);
+          }
+
+          function colorDist(r1, g1, b1, r2, g2, b2) {
+            return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+          }
+
+          let head = 0;
+          while (head < queue.length) {
+            const px = queue[head++];
+            const py = queue[head++];
+            const pIdx = py * w + px;
+
+            if (visited[pIdx]) continue;
+            visited[pIdx] = 1;
+
+            const dIdx = pIdx * 4;
+            const r = data[dIdx];
+            const g = data[dIdx + 1];
+            const b = data[dIdx + 2];
+
+            const dist = colorDist(r, g, b, bgR, bgG, bgB);
+
+            if (dist <= tolerance) {
+              data[dIdx + 3] = 0; // Полная прозрачность
+
+              if (px > 0 && !visited[pIdx - 1]) queue.push(px - 1, py);
+              if (px < w - 1 && !visited[pIdx + 1]) queue.push(px + 1, py);
+              if (py > 0 && !visited[pIdx - w]) queue.push(px, py - 1);
+              if (py < h - 1 && !visited[pIdx + w]) queue.push(px, py + 1);
+            } else if (dist <= tolerance + 8) {
+              // Мягкое сглаживание пограничных пикселей (anti-aliasing)
+              const alphaRatio = (dist - tolerance) / 8;
+              data[dIdx + 3] = Math.round(data[dIdx + 3] * alphaRatio);
+            }
+          }
+
+          ctx.putImageData(imgData, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
         };
         img.src = e.target.result;
       };
@@ -702,7 +766,7 @@
     const visual = item.image ? `<img src="${item.image}">` : icon(cat);
     return `<div class="item-card" data-cat="${cat}" data-id="${item.id}">
       <span class="del" data-del="${cat}:${item.id}">×</span>
-      <div class="icon-circle" style="background:${CATS[cat].soft};">${visual}</div>
+      <div class="icon-circle" style="background:#f4f4f4;">${visual}</div>
       <span class="name">${item.name}</span>
     </div>`;
   }
@@ -784,12 +848,12 @@
       <h3>Новая вещь</h3>
       <div class="field-label">Категория</div>
       <div class="chip-row" id="catChips">${chips}</div>
-      <div class="field-label">Фото</div>
+      <div class="field-label">Фото (фон удалится автоматически)</div>
       <label class="upload-box" id="uploadBox">
         <span id="uploadPreview">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 17l4.5-5.5a2 2 0 0 1 3 0L16 17M14 12l1.5-1.8a2 2 0 0 1 3 0L21 13" stroke="#A79E8C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="5" width="18" height="14" rx="2" stroke="#A79E8C" stroke-width="1.5"/></svg>
         </span>
-        <span class="hint">Загрузить фото вещи (необязательно)</span>
+        <span class="hint">Загрузить фото вещи</span>
         <input type="file" accept="image/*" id="photoInput">
       </label>
       <div class="field-label">Название</div>
@@ -810,8 +874,8 @@
     document.getElementById('photoInput').addEventListener('change', async (e)=>{
       const f = e.target.files[0]; if(!f) return;
       document.getElementById('uploadPreview').innerHTML = `<span style="font-size:11px;color:var(--ink-soft);">Обработка...</span>`;
-      tempPhoto = await compressImage(f);
-      document.getElementById('uploadPreview').innerHTML = `<img src="${tempPhoto}">`;
+      tempPhoto = await removeBackgroundAuto(f);
+      document.getElementById('uploadPreview').innerHTML = `<img src="${tempPhoto}" style="background:#f4f4f4;padding:4px;border-radius:12px;">`;
     });
     document.getElementById('saveItemBtn').addEventListener('click', ()=>{
       const name = document.getElementById('itemNameInput').value.trim() || 'Новая вещь';
@@ -829,7 +893,7 @@
       <div class="pick-group-title">${CATS[cat].label.replace(/\d\.\s/,'')}${hint}</div>
       <div class="pick-strip" data-pickcat="${cat}">
         ${items.map(it=>`<div class="pick-item ${lookSelection[cat].includes(it.id)?'selected':''}" data-pickid="${it.id}">
-          <div class="icon-circle" style="background:${CATS[cat].soft};">${it.image ? `<img src="${it.image}">` : icon(cat)}</div>
+          <div class="icon-circle" style="background:#f4f4f4;">${it.image ? `<img src="${it.image}">` : icon(cat)}</div>
           <span class="n">${it.name}</span>
         </div>`).join('')}
       </div>
