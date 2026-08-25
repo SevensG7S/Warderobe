@@ -219,7 +219,7 @@
     background:#F7F5FB; border-radius:28px 28px 0 0;
     box-shadow:0 -10px 40px rgba(0,0,0,.3);
     transform:translateY(105%); transition:transform .32s var(--ease);
-    max-height:85%; display:flex; flex-direction:column;
+    max-height:90%; display:flex; flex-direction:column;
   }
   .sheet.show{transform:translateY(0);}
   .sheet .grabber{width:36px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 4px;}
@@ -279,15 +279,26 @@
     width:100%; margin-top:9px; border:1px solid rgba(255,75,92,.3); border-radius:16px; padding:13px;
     background:rgba(255,75,92,.08); color:var(--danger); font-family:'Inter'; font-weight:700; font-size:13.5px; cursor:pointer;
   }
-  .look-detail-collage{
-    display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;
+  
+  /* НОВЫЙ ДИЗАЙН ПАПКИ ЛУКА (ВЕРТИКАЛЬНЫЙ СПИСОК) */
+  .look-detail-list { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; margin-bottom: 24px; }
+  .cat-section { display: flex; flex-direction: column; gap: 8px; }
+  .cat-lbl { font-family: 'Space Mono'; font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em; padding-left: 4px; }
+  .look-detail-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px; border-radius: 20px; background: #fff;
+    border: 1px solid var(--line);
   }
-  .look-detail-collage .slot{
-    aspect-ratio:1; border-radius:18px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px;
+  .look-detail-row.empty { border: 1.5px dashed rgba(21,19,31,.15); background: transparent; }
+  .look-detail-row .pic {
+    width: 56px; height: 56px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center; flex: none;
   }
-  .look-detail-collage .slot svg{width:34px;height:34px;}
-  .look-detail-collage .slot img{width:100%;height:100%;object-fit:contain;padding:10px;}
-  .look-detail-collage .slot .lbl{font-family:'Space Mono'; font-size:9px; color:var(--ink-soft); text-transform:uppercase;}
+  .look-detail-row .pic img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+  .look-detail-row .pic svg { width: 28px; height: 28px; }
+  .look-detail-row .info { flex: 1; min-width: 0; }
+  .look-detail-row .info b { display: block; font-family: 'Space Grotesk'; font-size: 16px; color: var(--ink); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .look-detail-row .info span { font-family: 'Space Mono'; font-size: 10px; color: var(--ink-faint); }
 
   .profile-view{display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:26px;}
   .profile-view .avatar{
@@ -448,10 +459,10 @@
 <script>
 (function(){
   const CATS = {
-    headwear: {label:'головной убор', short:'Убор', color:'violet', soft:'var(--violet-soft)', main:'var(--violet)'},
-    tops:     {label:'верх',          short:'Верх', color:'pink',   soft:'var(--pink-soft)',   main:'var(--pink)'},
-    bottoms:  {label:'низ',            short:'Низ',  color:'teal',   soft:'var(--teal-soft)',   main:'var(--teal)'},
-    shoes:    {label:'обувь',          short:'Обувь',color:'amber',  soft:'var(--amber-soft)',  main:'var(--amber)'}
+    headwear: {label:'1. Головной убор', short:'Убор', color:'violet', soft:'var(--violet-soft)', main:'var(--violet)'},
+    tops:     {label:'2. Верх',          short:'Верх', color:'pink',   soft:'var(--pink-soft)',   main:'var(--pink)'},
+    bottoms:  {label:'3. Низ',           short:'Низ',  color:'teal',   soft:'var(--teal-soft)',   main:'var(--teal)'},
+    shoes:    {label:'4. Обувь',         short:'Обувь',color:'amber',  soft:'var(--amber-soft)',  main:'var(--amber)'}
   };
 
   function shapePath(cat){
@@ -469,43 +480,36 @@
 
   function seed(){
     return {
-      wardrobe:{
-        headwear:[],
-        tops:[],
-        bottoms:[],
-        shoes:[]
-      },
-      looks:[]
+      wardrobe: { headwear:[], tops:[], bottoms:[], shoes:[] },
+      looks: []
     };
   }
 
   let state = seed();
   let tempPhoto = null;
-  let lookSelection = {headwear:null, tops:null, bottoms:null, shoes:null};
+  // Теперь здесь хранятся МАССИВЫ выбранных вещей для каждой категории
+  let lookSelection = {headwear:[], tops:[], bottoms:[], shoes:[]};
   let currentFilter = 'all';
 
-  // Сохранение в память браузера
   function save(){
     try { 
-      localStorage.setItem('wardrobe-state-v4', JSON.stringify(state)); 
+      // V5 — версия с массивами во всех категориях
+      localStorage.setItem('wardrobe-state-v5', JSON.stringify(state)); 
     } catch(e) {
       console.error('Ошибка сохранения:', e);
       if (e.name === 'QuotaExceededError') {
-        alert('Память браузера переполнена! Слишком много тяжелых фото. Удали лишнее или используй скриншоты меньшего размера.');
+        alert('Память браузера переполнена! Удали лишние фото или используй скриншоты поменьше.');
       }
     }
   }
 
-  // Загрузка из памяти браузера при входе
   function load(){
     try {
-      const saved = localStorage.getItem('wardrobe-state-v4');
+      const saved = localStorage.getItem('wardrobe-state-v5');
       if(saved) { 
         state = JSON.parse(saved); 
       }
-    } catch(e) {
-      console.error('Ошибка загрузки:', e);
-    }
+    } catch(e) {}
     renderAll();
   }
 
@@ -519,16 +523,9 @@
   function wordVeshi(n){ const m=n%10, m2=n%100; if(m2>=11&&m2<=14) return 'вещей'; if(m===1) return 'вещь'; if(m>=2&&m<=4) return 'вещи'; return 'вещей'; }
   function wordLuki(n){ const m=n%10, m2=n%100; if(m2>=11&&m2<=14) return 'луков'; if(m===1) return 'лук'; if(m>=2&&m<=4) return 'лука'; return 'луков'; }
 
-  function greetingText(){
-    const h = new Date().getHours();
-    if(h<6) return 'ночи';
-    if(h<12) return 'утро';
-    if(h<18) return 'день';
-    return 'вечер';
-  }
-
   function renderHeader(){
-    const g = greetingText();
+    const h = new Date().getHours();
+    const g = h<6 ? 'ночи' : h<12 ? 'утро' : h<18 ? 'день' : 'вечер';
     document.getElementById('greeting').innerHTML = g==='ночи'
       ? `Доброй <span class="grad-word">ночи</span>`
       : `${g==='утро'?'Доброе':'Добрый'} <span class="grad-word">${g}</span>`;
@@ -572,20 +569,30 @@
   }
 
   function collageSlotHTML(cat, id){
-    if(!id) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
+    if(!cat || !id) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
     const it = findItem(cat,id);
     if(!it) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
     return `<div class="slot" style="background:${CATS[cat].soft};">${it.image ? `<img src="${it.image}" style="object-fit:contain;padding:4px;">` : icon(cat)}</div>`;
   }
 
   function lookCardHTML(look){
-    const order = ['headwear','tops','bottoms','shoes'];
-    const filled = order.filter(c=>look.items[c]).length;
+    const allSelected = [];
+    ['headwear','tops','bottoms','shoes'].forEach(c => {
+      if(look.items[c]) look.items[c].forEach(id => allSelected.push({cat:c, id}));
+    });
+    
+    // В превью карточки показываем первые 4 вещи
+    const slots = [];
+    for(let i=0; i<4; i++) {
+      if(i < allSelected.length) slots.push(collageSlotHTML(allSelected[i].cat, allSelected[i].id));
+      else slots.push(collageSlotHTML(null, null));
+    }
+    
     return `<div class="look-card glass-card" data-look="${look.id}">
-      <div class="look-collage">${order.map(c=>collageSlotHTML(c, look.items[c])).join('')}</div>
+      <div class="look-collage">${slots.join('')}</div>
       <div class="look-info">
         <p class="name">${look.name}</p>
-        <p class="meta">${filled} из 4 · ${look.dateLabel}</p>
+        <p class="meta">${allSelected.length} вещей · ${look.dateLabel}</p>
       </div>
       <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>`;
@@ -618,7 +625,7 @@
   overlay.addEventListener('click', closeSheet);
 
   function addItemSheetHTML(defaultCat){
-    const chips = Object.keys(CATS).map(c=>`<button class="chip ${c===defaultCat?'active':''}" data-catchip="${c}">${CATS[c].label}</button>`).join('');
+    const chips = Object.keys(CATS).map(c=>`<button class="chip ${c===defaultCat?'active':''}" data-catchip="${c}">${CATS[c].label.replace(/\d\.\s/,'')}</button>`).join('');
     return `
       <h3>Новая вещь</h3>
       <div class="field-label">Категория</div>
@@ -636,6 +643,7 @@
       <button class="primary-btn" id="saveItemBtn">Добавить в гардероб</button>
     `;
   }
+  
   function openAddItem(defaultCat){
     openSheet(addItemSheetHTML(defaultCat));
     let currentCat = defaultCat;
@@ -661,16 +669,19 @@
   function pickGroupHTML(cat){
     const items = state.wardrobe[cat];
     if(items.length===0) return '';
+    const isTop = cat === 'tops';
+    const hint = isTop ? ' <span style="text-transform:none;opacity:.6;font-size:9px;">(можно несколько)</span>' : '';
     return `<div class="pick-group">
-      <div class="pick-group-title">${CATS[cat].label}</div>
+      <div class="pick-group-title">${CATS[cat].label.replace(/\d\.\s/,'')}${hint}</div>
       <div class="pick-strip" data-pickcat="${cat}">
-        ${items.map(it=>`<div class="pick-item ${lookSelection[cat]===it.id?'selected':''}" data-pickid="${it.id}">
+        ${items.map(it=>`<div class="pick-item ${lookSelection[cat].includes(it.id)?'selected':''}" data-pickid="${it.id}">
           <div class="icon-circle" style="background:${CATS[cat].soft};">${it.image ? `<img src="${it.image}">` : icon(cat)}</div>
           <span class="n">${it.name}</span>
         </div>`).join('')}
       </div>
     </div>`;
   }
+
   function lookSheetHTML(prefillName){
     const hasAny = allItemsFlat().length>0;
     if(!hasAny){
@@ -694,21 +705,44 @@
   function rollRandom(){
     Object.keys(CATS).forEach(cat=>{
       const items = state.wardrobe[cat];
-      lookSelection[cat] = items.length ? items[Math.floor(Math.random()*items.length)].id : null;
+      if (items.length) {
+        lookSelection[cat] = [items[Math.floor(Math.random()*items.length)].id];
+      } else {
+        lookSelection[cat] = [];
+      }
     });
   }
+
   function openLookSheet(random){
-    if(random){ rollRandom(); } else { lookSelection = {headwear:null,tops:null,bottoms:null,shoes:null}; }
+    if(random){ rollRandom(); } else { lookSelection = {headwear:[],tops:[],bottoms:[],shoes:[]}; }
     openSheet(lookSheetHTML(random ? randomName() : ''));
     if(allItemsFlat().length>0) bindLookSheet();
   }
+
   function bindLookSheet(){
     sheetInner.addEventListener('click', function(e){
       const pick = e.target.closest('[data-pickid]');
       if(pick){
         const cat = pick.closest('[data-pickcat]').dataset.pickcat;
         const id = pick.dataset.pickid;
-        lookSelection[cat] = lookSelection[cat]===id ? null : id;
+        const isTop = cat === 'tops';
+
+        if(isTop) {
+          // Для верха добавляем или убираем из массива
+          if(lookSelection[cat].includes(id)) {
+            lookSelection[cat] = lookSelection[cat].filter(i => i !== id);
+          } else {
+            lookSelection[cat].push(id);
+          }
+        } else {
+          // Для остальных - только 1 вещь
+          if(lookSelection[cat].includes(id)) {
+            lookSelection[cat] = [];
+          } else {
+            lookSelection[cat] = [id];
+          }
+        }
+        
         sheetInner.querySelector('.pick-groups').innerHTML = Object.keys(CATS).map(pickGroupHTML).join('');
       }
     });
@@ -721,28 +755,68 @@
       const name = document.getElementById('lookNameInput').value.trim() || randomName();
       const d = new Date();
       const dateLabel = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
-      state.looks.push({id:uid(), name, items:{...lookSelection}, dateLabel});
+      
+      // Глубокое копирование массивов
+      const itemsCopy = {
+        headwear: [...lookSelection.headwear],
+        tops: [...lookSelection.tops],
+        bottoms: [...lookSelection.bottoms],
+        shoes: [...lookSelection.shoes]
+      };
+
+      state.looks.push({id:uid(), name, items:itemsCopy, dateLabel});
       save(); renderAll(); closeSheet();
     });
   }
 
+  // НОВОЕ ОТОБРАЖЕНИЕ ПАПКИ ЛУКА (ВЕРТИКАЛЬНОЕ)
   function lookDetailHTML(look){
     const order = ['headwear','tops','bottoms','shoes'];
+    
+    const listHTML = order.map(cat => {
+      const ids = look.items[cat] || [];
+      
+      if(ids.length === 0) {
+        return `
+          <div class="cat-section">
+            <div class="cat-lbl">${CATS[cat].label}</div>
+            <div class="look-detail-row empty">
+              <div class="pic" style="background:rgba(21,19,31,.04);"><span style="font-size:10px;color:var(--ink-faint);">пусто</span></div>
+              <div class="info"><b style="color:var(--ink-soft);">Нет вещи</b></div>
+            </div>
+          </div>`;
+      }
+      
+      return `
+        <div class="cat-section">
+          <div class="cat-lbl">${CATS[cat].label}</div>
+          ${ids.map(id => {
+            const it = findItem(cat, id);
+            if(!it) return ''; 
+            return `
+              <div class="look-detail-row">
+                <div class="pic" style="background:${CATS[cat].soft};">
+                  ${it.image ? `<img src="${it.image}">` : icon(cat)}
+                </div>
+                <div class="info">
+                  <b>${it.name}</b>
+                  <span>${CATS[cat].short}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>`;
+    }).join('');
+
     return `
       <h3>${look.name}</h3>
-      <div class="look-detail-collage">
-        ${order.map(cat=>{
-          const id = look.items[cat];
-          const it = id ? findItem(cat,id) : null;
-          return `<div class="slot" style="background:${CATS[cat].soft};">
-            ${it ? (it.image ? `<img src="${it.image}">` : icon(cat)) : `<span style="font-size:11px;color:var(--ink-faint);">пусто</span>`}
-            <span class="lbl">${CATS[cat].short}${it ? ' · '+it.name : ''}</span>
-          </div>`;
-        }).join('')}
+      <div class="look-detail-list">
+        ${listHTML}
       </div>
       <button class="danger-btn" data-deletelook="${look.id}">Удалить лук</button>
     `;
   }
+
   function openLookDetail(id){
     const look = state.looks.find(l=>l.id===id);
     if(!look) return;
@@ -784,8 +858,8 @@
       
       // Автоматически очищаем эту вещь из всех луков, где она была
       state.looks.forEach(look => {
-        if (look.items[cat] === id) {
-          look.items[cat] = null;
+        if (look.items[cat]) {
+          look.items[cat] = look.items[cat].filter(idInLook => idInLook !== id);
         }
       });
 
