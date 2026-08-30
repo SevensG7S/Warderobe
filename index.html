@@ -2,27 +2,28 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Гардероб</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --violet:#6C4CFF;
-    --violet-soft:#EDE9FE;
-    --pink:#FF5D8F;
-    --pink-soft:#FFE3ED;
-    --teal:#0FBF9F;
-    --teal-soft:#DEFBF3;
-    --amber:#FFA43D;
-    --amber-soft:#FFF0DC;
-    --ink:#15131F;
-    --ink-soft:#635F76;
-    --ink-faint:#9A96AC;
+    --violet: var(--tg-button-color, #6C4CFF);
+    --violet-soft: var(--tg-secondary-bg-color, #EDE9FE);
+    --pink: var(--tg-button-color, #FF5D8F);
+    --pink-soft: var(--tg-secondary-bg-color, #FFE3ED);
+    --teal: var(--tg-button-color, #0FBF9F);
+    --teal-soft: var(--tg-secondary-bg-color, #DEFBF3);
+    --amber: var(--tg-button-color, #FFA43D);
+    --amber-soft: var(--tg-secondary-bg-color, #FFF0DC);
+    --ink: var(--tg-button-text-color, #15131F);
+    --ink-soft: var(--tg-hint-color, #635F76);
+    --ink-faint: var(--tg-hint-color, #9A96AC);
     --glass: rgba(255,255,255,.58);
     --glass-strong: rgba(255,255,255,.86);
     --line: rgba(21,19,31,.09);
-    --danger:#FF4B5C;
+    --danger: var(--tg-button-color, #FF4B5C);
     --shadow: 0 16px 40px rgba(60,40,110,.14);
     --ease: cubic-bezier(.22,1,.36,1);
   }
@@ -42,8 +43,7 @@
     position:relative;
     width:100%;
     max-width:480px;
-    height:100vh;
-    height:100dvh;
+    height:var(--tg-viewport-height, 100dvh);
     overflow:hidden;
     background:#F7F5FB;
     box-shadow:0 0 40px rgba(0,0,0,.4);

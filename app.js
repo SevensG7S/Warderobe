@@ -1,4 +1,53 @@
 (function(){
+  // Telegram WebApp initialization
+  const tg = window.Telegram?.WebApp;
+
+  // Theme integration
+  function initTelegramTheme() {
+    if (!tg?.themeParams) return;
+
+    const { bg_color, secondary_bg_color, hint_color, link_color, button_color, button_text_color } = tg.themeParams;
+
+    // Apply theme to CSS variables
+    document.documentElement.style.setProperty('--tg-bg-color', bg_color);
+    document.documentElement.style.setProperty('--tg-secondary-bg-color', secondary_bg_color);
+    document.documentElement.style.setProperty('--tg-hint-color', hint_color);
+    document.documentElement.style.setProperty('--tg-link-color', link_color);
+    document.documentElement.style.setProperty('--tg-button-color', button_color);
+    document.documentElement.style.setProperty('--tg-button-text-color', button_text_color);
+
+    // Override existing color variables with Telegram theme
+    document.documentElement.style.setProperty('--violet', button_color);
+    document.documentElement.style.setProperty('--pink', button_color);
+    document.documentElement.style.setProperty('--teal', button_color);
+    document.documentElement.style.setProperty('--amber', button_color);
+    document.documentElement.style.setProperty('--ink', button_text_color);
+    document.documentElement.style.setProperty('--ink-soft', hint_color);
+    document.documentElement.style.setProperty('--ink-faint', hint_color);
+  }
+
+  // Listen for theme changes
+  if (tg) {
+    tg.onEvent('themeChanged', initTelegramTheme);
+  }
+
+  // Initialize theme on load
+  initTelegramTheme();
+
+  // Viewport height adjustment for Telegram WebApp
+  function updateViewportHeight() {
+    if (tg) {
+      document.documentElement.style.setProperty('--tg-viewport-height', `${tg.viewHeight}px`);
+    }
+  }
+
+  if (tg) {
+    tg.onEvent('viewportChanged', updateViewportHeight);
+    updateViewportHeight();
+    // Expand to full height
+    tg.expand();
+  }
+
   const CATS = {
     headwear: {label:'1. Головной убор', short:'Убор', color:'violet', soft:'var(--violet-soft)', main:'var(--violet)'},
     tops:     {label:'2. Верх',          short:'Верх', color:'pink',   soft:'var(--pink-soft)',   main:'var(--pink)'},
@@ -19,24 +68,48 @@
     return `<svg viewBox="0 0 100 100">${shapePath(cat).split('M').join(CATS[cat].main==='var(--violet)'?'#6C4CFF':CATS[cat].main==='var(--pink)'?'#FF5D8F':CATS[cat].main==='var(--teal)'?'#0FBF9F':'#FFA43D')}</svg>`;
   }
 
-  /* ---------- LOCAL STORAGE ---------- */
+  /* ---------- TELEGRAM STORAGE ---------- */
   const LS_KEY = 'wardrobe_state';
 
-  function saveStateToLS(data) {
+  async function saveStateToLS(data) {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(data));
+      if (window.Telegram?.WebApp?.CloudStorage) {
+        await window.Telegram.WebApp.CloudStorage.setItem(LS_KEY, JSON.stringify(data));
+      } else {
+        // Fallback to localStorage if CloudStorage not available
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
     } catch(e) {
-      console.error('Ошибка сохранения в localStorage:', e);
+      console.error('Ошибка сохранения состояния:', e);
+      // Final fallback to localStorage
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      } catch(e2) {
+        console.error('Ошибка сохранения в localStorage:', e2);
+      }
     }
   }
 
-  function loadStateFromLS() {
+  async function loadStateFromLS() {
     try {
-      const data = localStorage.getItem(LS_KEY);
-      return data ? JSON.parse(data) : null;
+      if (window.Telegram?.WebApp?.CloudStorage) {
+        const data = await window.Telegram.WebApp.CloudStorage.getItem(LS_KEY);
+        return data ? JSON.parse(data) : null;
+      } else {
+        // Fallback to localStorage if CloudStorage not available
+        const data = localStorage.getItem(LS_KEY);
+        return data ? JSON.parse(data) : null;
+      }
     } catch(e) {
-      console.error('Ошибка чтения из localStorage:', e);
-      return null;
+      console.error('Ошибка чтения состояния:', e);
+      // Fallback to localStorage
+      try {
+        const data = localStorage.getItem(LS_KEY);
+        return data ? JSON.parse(data) : null;
+      } catch(e2) {
+        console.error('Ошибка чтения из localStorage:', e2);
+        return null;
+      }
     }
   }
 
@@ -147,8 +220,8 @@
   let editingLookId = null;
   let currentFilter = 'all';
 
-  function save(){
-    saveStateToLS(state);
+  async function save(){
+    await saveStateToLS(state);
   }
 
   async function load(){
