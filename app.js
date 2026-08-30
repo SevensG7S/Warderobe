@@ -4,26 +4,28 @@
 
   // Theme integration
   function initTelegramTheme() {
+    // Detect dark scheme from Telegram or system preferences
+    const isDark = tg?.colorScheme === 'dark' || (!tg && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
+      document.documentElement.classList.add('dark-theme');
+      document.documentElement.classList.remove('light-theme');
+    } else {
+      document.documentElement.classList.remove('dark-theme');
+      document.documentElement.classList.add('light-theme');
+    }
+
     if (!tg?.themeParams) return;
 
-    const { bg_color, secondary_bg_color, hint_color, link_color, button_color, button_text_color } = tg.themeParams;
+    const { bg_color, secondary_bg_color, hint_color, text_color, link_color, button_color, button_text_color } = tg.themeParams;
 
     // Apply theme to CSS variables
-    document.documentElement.style.setProperty('--tg-bg-color', bg_color);
-    document.documentElement.style.setProperty('--tg-secondary-bg-color', secondary_bg_color);
-    document.documentElement.style.setProperty('--tg-hint-color', hint_color);
-    document.documentElement.style.setProperty('--tg-link-color', link_color);
-    document.documentElement.style.setProperty('--tg-button-color', button_color);
-    document.documentElement.style.setProperty('--tg-button-text-color', button_text_color);
-
-    // Override existing color variables with Telegram theme
-    document.documentElement.style.setProperty('--violet', button_color);
-    document.documentElement.style.setProperty('--pink', button_color);
-    document.documentElement.style.setProperty('--teal', button_color);
-    document.documentElement.style.setProperty('--amber', button_color);
-    document.documentElement.style.setProperty('--ink', button_text_color);
-    document.documentElement.style.setProperty('--ink-soft', hint_color);
-    document.documentElement.style.setProperty('--ink-faint', hint_color);
+    if (bg_color) document.documentElement.style.setProperty('--tg-bg-color', bg_color);
+    if (secondary_bg_color) document.documentElement.style.setProperty('--tg-secondary-bg-color', secondary_bg_color);
+    if (text_color) document.documentElement.style.setProperty('--tg-text-color', text_color);
+    if (hint_color) document.documentElement.style.setProperty('--tg-hint-color', hint_color);
+    if (link_color) document.documentElement.style.setProperty('--tg-link-color', link_color);
+    if (button_color) document.documentElement.style.setProperty('--tg-button-color', button_color);
+    if (button_text_color) document.documentElement.style.setProperty('--tg-button-text-color', button_text_color);
   }
 
   // Listen for theme changes
@@ -50,7 +52,7 @@
 
   const CATS = {
     headwear: {label:'1. Головной убор', short:'Убор', color:'violet', soft:'var(--violet-soft)', main:'var(--violet)'},
-    tops:     {label:'2. Верх',          short:'Верх', color:'pink',   soft:'var(--pink-soft)',   main:'var(--pink)'},
+    tops:     {label:'2.  Верх',          short:'Верх', color:'pink',   soft:'var(--pink-soft)',   main:'var(--pink)'},
     bottoms:  {label:'3. Низ',           short:'Низ',  color:'teal',   soft:'var(--teal-soft)',   main:'var(--teal)'},
     shoes:    {label:'4. Обувь',         short:'Обувь',color:'amber',  soft:'var(--amber-soft)',  main:'var(--amber)'}
   };
@@ -225,7 +227,7 @@
   }
 
   async function load(){
-    const saved = loadStateFromLS();
+    const saved = await loadStateFromLS();
     if(saved) {
       state = saved;
     }
@@ -266,7 +268,7 @@
     const visual = item.image ? `<img src="${item.image}">` : icon(cat);
     return `<div class="item-card" data-cat="${cat}" data-id="${item.id}">
       <span class="del" data-del="${cat}:${item.id}">×</span>
-      <div class="icon-circle" style="background:#f4f4f4;">${visual}</div>
+      <div class="icon-circle">${visual}</div>
       <span class="name">${item.name}</span>
     </div>`;
   }
@@ -288,10 +290,10 @@
   }
 
   function collageSlotHTML(cat, id){
-    if(!cat || !id) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
+    if(!cat || !id) return `<div class="slot empty"></div>`;
     const it = findItem(cat,id);
-    if(!it) return `<div class="slot" style="background:rgba(21,19,31,.04);"></div>`;
-    return `<div class="slot" style="background:#f4f4f4;">${it.image ? `<img src="${it.image}" style="object-fit:contain;padding:4px;">` : icon(cat)}</div>`;
+    if(!it) return `<div class="slot empty"></div>`;
+    return `<div class="slot">${it.image ? `<img src="${it.image}" style="object-fit:contain;padding:4px;">` : icon(cat)}</div>`;
   }
 
   function lookCardHTML(look){
@@ -375,7 +377,7 @@
       const f = e.target.files[0]; if(!f) return;
       document.getElementById('uploadPreview').innerHTML = `<span style="font-size:11px;color:var(--ink-soft);">Обработка...</span>`;
       tempPhoto = await removeBackgroundAuto(f);
-      document.getElementById('uploadPreview').innerHTML = `<img src="${tempPhoto}" style="background:#f4f4f4;padding:4px;border-radius:12px;">`;
+      document.getElementById('uploadPreview').innerHTML = `<img src="${tempPhoto}" style="background:var(--card-empty-bg);padding:4px;border-radius:12px;">`;
     });
     document.getElementById('saveItemBtn').addEventListener('click', ()=>{
       const name = document.getElementById('itemNameInput').value.trim() || 'Новая вещь';
@@ -393,7 +395,7 @@
       <div class="pick-group-title">${CATS[cat].label.replace(/\d\.\s/,'')}${hint}</div>
       <div class="pick-strip" data-pickcat="${cat}">
         ${items.map(it=>`<div class="pick-item ${lookSelection[cat].includes(it.id)?'selected':''}" data-pickid="${it.id}">
-          <div class="icon-circle" style="background:#f4f4f4;">${it.image ? `<img src="${it.image}">` : icon(cat)}</div>
+          <div class="icon-circle">${it.image ? `<img src="${it.image}">` : icon(cat)}</div>
           <span class="n">${it.name}</span>
         </div>`).join('')}
       </div>
