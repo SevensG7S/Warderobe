@@ -239,7 +239,7 @@
     return out;
   }
   function findItem(cat,id){ return state.wardrobe[cat].find(i=>i.id===id); }
-  function wordVeshi(n){ const m=n%10, m2=n%100; if(m2>=11&&m2<=14) return 'вещей'; if(m===1) return 'вещь'; if(m>=2&&m<=4) return 'вещи'; return 'вещих'; }
+  function wordVeshi(n){ const m=n%10, m2=n%100; if(m2>=11&&m2<=14) return 'вещей'; if(m===1) return 'вещь'; if(m>=2&&m<=4) return 'вещи'; return 'вещей'; }
   function wordLuki(n){ const m=n%10, m2=n%100; if(m2>=11&&m2<=14) return 'луков'; if(m===1) return 'лук'; if(m>=2&&m<=4) return 'лука'; return 'луков'; }
 
   function renderHeader(){
