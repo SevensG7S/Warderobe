@@ -518,6 +518,17 @@
           <div class="glass-card"><b id="pStat2">0</b><span>Луков</span></div>
           <div class="glass-card"><b>4</b><span>Категории</span></div>
         </div>
+        <!-- BACKUP SECTION -->
+        <div class="section" style="margin-top:26px;">
+          <div class="section-head">
+            <h2>Резервное копирование</h2>
+          </div>
+          <div class="glass-card" style="padding:16px; text-align:center;">
+            <button class="primary-btn" id="exportBackupBtn">Экспорт резервной копии</button>
+            <button class="secondary-btn" id="importBackupBtn" style="margin-top:12px; display:block; width:100%;">Импорт резервной копии</button>
+            <input type="file" id="backupFileInput" accept=".json" style="display:none;">
+          </div>
+        </div>
       </div>
     </div>
 
@@ -548,7 +559,7 @@
   </div>
 </div>
 
-<script>
+<script src="app.js" defer></script>
 (function(){
   const CATS = {
     headwear: {label:'1. Головной убор', short:'Убор', color:'violet', soft:'var(--violet-soft)', main:'var(--violet)'},
