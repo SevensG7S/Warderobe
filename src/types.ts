@@ -1,40 +1,58 @@
-export type Category = 'headwear' | 'tops' | 'bottoms' | 'shoes';
+export type Category = 'top' | 'bottom' | 'shoes' | 'accessory' | 'outerwear' | 'dress';
 
-export interface Item {
+export const CATEGORY_LABELS: Record<Category, string> = {
+  top: 'Верх',
+  bottom: 'Низ',
+  shoes: 'Обувь',
+  accessory: 'Аксессуар',
+  outerwear: 'Верхняя одежда',
+  dress: 'Платье',
+};
+
+export const COLOR_OPTIONS = [
+  { label: 'Чёрный', hex: '#1c1c1c' },
+  { label: 'Белый', hex: '#f6f3ec' },
+  { label: 'Бежевый', hex: '#c9b790' },
+  { label: 'Синий', hex: '#3a4a6b' },
+  { label: 'Лавандовый', hex: '#b9a6ff' },
+  { label: 'Терракот', hex: '#e8895f' },
+];
+
+export interface ClothingItem {
   id: string;
+  userId: string;
+  category: Category;
+  color: string;
+  brand?: string;
   name: string;
-  /** Data URL (PNG) with background removed. Will become a Supabase Storage URL later. */
-  image: string | null;
+  imageUrl: string;
+  thumbUrl?: string;
+  createdAt: string;
 }
 
-export type Wardrobe = Record<Category, Item[]>;
-
-export interface LookItems {
-  headwear: string[];
-  tops: string[];
-  bottoms: string[];
-  shoes: string[];
+export interface LookLayer {
+  itemId: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  zIndex: number;
 }
 
 export interface Look {
   id: string;
+  userId: string;
   name: string;
-  items: LookItems;
-  dateLabel: string;
+  layers: LookLayer[];
+  previewUrl?: string;
+  createdAt: string;
 }
 
-export interface AppState {
-  wardrobe: Wardrobe;
-  looks: Look[];
-}
-
-export function emptyState(): AppState {
-  return {
-    wardrobe: { headwear: [], tops: [], bottoms: [], shoes: [] },
-    looks: []
-  };
-}
-
-export function emptyLookItems(): LookItems {
-  return { headwear: [], tops: [], bottoms: [], shoes: [] };
+export interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  language_code?: string;
 }

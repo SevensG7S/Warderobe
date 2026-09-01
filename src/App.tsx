@@ -1,94 +1,103 @@
-import { useEffect, useState } from 'react';
-import { WardrobeProvider, useWardrobe } from './context/WardrobeContext';
-import { TabBar, Tab } from './components/TabBar';
-import { Sheet } from './components/Sheet';
-import { Home } from './screens/Home';
-import { Items } from './screens/Items';
-import { Looks } from './screens/Looks';
-import { Profile } from './screens/Profile';
-import { AddItemSheet } from './screens/sheets/AddItemSheet';
-import { LookSheet } from './screens/sheets/LookSheet';
-import { LookDetailSheet } from './screens/sheets/LookDetailSheet';
-import { Category, Look } from './types';
+import React, { useState, useEffect } from 'react';
+import { initTelegram, haptic } from './lib/telegram';
+import { useWardrobeStore } from './store/useWardrobeStore';
+import { ClosetScreen } from './components/ClosetScreen';
+import { AddScreen } from './components/AddScreen';
+import { LookBuilderScreen } from './components/LookBuilderScreen';
+import { ProfileScreen } from './components/ProfileScreen';
 
-type SheetState =
-  | { type: 'addItem'; cat: Category }
-  | { type: 'lookSheet'; editLook: Look | null; random: boolean }
-  | { type: 'lookDetail'; look: Look }
-  | null;
+type Tab = 'closet' | 'add' | 'looks' | 'profile';
 
-function AppShell() {
-  const { state, loading } = useWardrobe();
-  const [tab, setTab] = useState<Tab>('home');
-  const [sheet, setSheet] = useState<SheetState>(null);
+const TAB_CONFIG: Record<Tab, { title: string; sub: (itemCount: number, lookCount: number) => string }> = {
+  closet: { title: 'Гардероб', sub: (i) => `${i} вещей` },
+  add: { title: 'Новая вещь', sub: () => 'Шаг 1 из 1' },
+  looks: { title: 'Конструктор', sub: () => 'Новый лук' },
+  profile: { title: 'Профиль', sub: (_, l) => `${l} луков` },
+};
+
+export const App: React.FC = () => {
+  const [currentTab, setCurrentTab] = useState<Tab>('closet');
+  const items = useWardrobeStore((s) => s.items);
+  const looks = useWardrobeStore((s) => s.looks);
 
   useEffect(() => {
-    // Telegram Mini App bootstrap. No-op outside Telegram.
-    const tg = (window as any).Telegram?.WebApp;
-    tg?.ready?.();
-    tg?.expand?.();
+    initTelegram();
   }, []);
 
-  function openLookDetailById(id: string) {
-    const look = state.looks.find((l) => l.id === id);
-    if (look) setSheet({ type: 'lookDetail', look });
-  }
-
-  if (loading) return null;
+  const config = TAB_CONFIG[currentTab];
 
   return (
-    <div className="app-container">
-      <div className="mesh" />
-      <div className="app">
-        {tab === 'home' && (
-          <Home
-            onGoto={setTab}
-            onAddItem={() => setSheet({ type: 'addItem', cat: 'headwear' })}
-            onOpenLook={openLookDetailById}
-          />
-        )}
-        {tab === 'items' && (
-          <Items onAddItem={(cat) => setSheet({ type: 'addItem', cat })} />
-        )}
-        {tab === 'looks' && (
-          <Looks
-            onAddLook={() => setSheet({ type: 'lookSheet', editLook: null, random: false })}
-            onRandomLook={() => setSheet({ type: 'lookSheet', editLook: null, random: true })}
-            onOpenLook={openLookDetailById}
-          />
-        )}
-        {tab === 'profile' && <Profile />}
+    <div id="app">
+      {/* Top Bar */}
+      <header className="topbar">
+        <h1 className="display">{config.title}</h1>
+        <span className="count">{config.sub(items.length, looks.length)}</span>
+      </header>
 
-        <TabBar active={tab} onChange={setTab} />
-      </div>
+      {/* Screen Content */}
+      <main className="screen-container">
+        {currentTab === 'closet' && <ClosetScreen />}
+        {currentTab === 'add' && <AddScreen onSuccess={() => setCurrentTab('closet')} />}
+        {currentTab === 'looks' && <LookBuilderScreen />}
+        {currentTab === 'profile' && <ProfileScreen />}
+      </main>
 
-      <Sheet open={sheet !== null} onClose={() => setSheet(null)}>
-        {sheet?.type === 'addItem' && (
-          <AddItemSheet defaultCat={sheet.cat} onDone={() => setSheet(null)} />
-        )}
-        {sheet?.type === 'lookSheet' && (
-          <LookSheet
-            editLook={sheet.editLook}
-            random={sheet.random}
-            onDone={(id) => openLookDetailById(id)}
-          />
-        )}
-        {sheet?.type === 'lookDetail' && (
-          <LookDetailSheet
-            look={sheet.look}
-            onEdit={() => setSheet({ type: 'lookSheet', editLook: sheet.look, random: false })}
-            onDeleted={() => setSheet(null)}
-          />
-        )}
-      </Sheet>
+      {/* Bottom Navigation */}
+      <nav className="tabbar">
+        <button
+          className={`tab ${currentTab === 'closet' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('closet');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M6 4l3 2 3-2 3 2 3-2v16H6V4z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Гардероб
+        </button>
+        <button
+          className={`tab ${currentTab === 'add' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('add');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="12" cy="12" r="9" strokeLinecap="round" />
+            <path d="M12 8v8M8 12h8" strokeLinecap="round" />
+          </svg>
+          Добавить
+        </button>
+        <button
+          className={`tab ${currentTab === 'looks' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('looks');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <path d="M4 14l4-4 4 4 4-6 4 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Луки
+        </button>
+        <button
+          className={`tab ${currentTab === 'profile' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('profile');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="12" cy="8" r="3.4" />
+            <path d="M5 20c1.5-4 4.2-6 7-6s5.5 2 7 6" strokeLinecap="round" />
+          </svg>
+          Профиль
+        </button>
+      </nav>
     </div>
   );
-}
+};
 
-export default function App() {
-  return (
-    <WardrobeProvider>
-      <AppShell />
-    </WardrobeProvider>
-  );
-}
+export default App;
