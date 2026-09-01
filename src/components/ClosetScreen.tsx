@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useWardrobeStore } from '../store/useWardrobeStore';
 import { haptic, hapticSuccess } from '../lib/telegram';
-import { CATEGORY_LABELS, type Category } from '../types';
+import { CATEGORY_LABELS, type Category, type ClothingItem } from '../types';
+import { ItemDetailModal } from './ItemDetailModal';
 
 const CATEGORIES: Array<Category | 'all'> = ['all', 'top', 'bottom', 'shoes', 'accessory', 'outerwear', 'dress'];
 
@@ -12,6 +13,7 @@ interface ClosetScreenProps {
 export const ClosetScreen: React.FC<ClosetScreenProps> = ({ onNavigateToAdd }) => {
   const { items, activeCategory, setActiveCategory, fetchItems, removeItem, loading } = useWardrobeStore();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewingItem, setViewingItem] = useState<ClothingItem | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -72,7 +74,14 @@ export const ClosetScreen: React.FC<ClosetScreenProps> = ({ onNavigateToAdd }) =
       ) : (
         <div className="grid">
           {filteredItems.map((item) => (
-            <div key={item.id} className="item-card" onClick={() => haptic('light')}>
+            <div
+              key={item.id}
+              className="item-card"
+              onClick={() => {
+                haptic('light');
+                setViewingItem(item);
+              }}
+            >
               <button
                 className="delete-btn"
                 title="Удалить"
@@ -83,7 +92,7 @@ export const ClosetScreen: React.FC<ClosetScreenProps> = ({ onNavigateToAdd }) =
                   <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              <div className="thumb">
+              <div className="thumb checker-bg">
                 <img src={item.imageUrl} alt={item.name} />
               </div>
               <div className="meta">
@@ -94,6 +103,8 @@ export const ClosetScreen: React.FC<ClosetScreenProps> = ({ onNavigateToAdd }) =
           ))}
         </div>
       )}
+
+      {viewingItem && <ItemDetailModal item={viewingItem} onClose={() => setViewingItem(null)} />}
     </div>
   );
 };

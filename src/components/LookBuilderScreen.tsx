@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { useWardrobeStore } from '../store/useWardrobeStore';
 import { haptic, hapticSuccess, tg } from '../lib/telegram';
 import { api } from '../lib/api';
+import { composeLookPreview } from '../lib/composePreview';
+import { ItemDetailModal } from './ItemDetailModal';
 import type { Category, ClothingItem } from '../types';
 
 type BuilderMode = 'slots' | 'canvas';
@@ -13,7 +15,12 @@ const SLOT_CONFIG: { category: Category; label: string; icon: string }[] = [
   { category: 'accessory', label: 'Аксессуар', icon: '🧢' },
 ];
 
-export const LookBuilderScreen: React.FC = () => {
+interface LookBuilderScreenProps {
+  folderId?: string | null;
+  onSaved?: () => void;
+}
+
+export const LookBuilderScreen: React.FC<LookBuilderScreenProps> = ({ folderId = null, onSaved }) => {
   const {
     items,
     builderLayers,
@@ -26,6 +33,7 @@ export const LookBuilderScreen: React.FC = () => {
     selectLayer,
     addLook,
   } = useWardrobeStore();
+  const [viewingItem, setViewingItem] = useState<ClothingItem | null>(null);
 
   const [mode, setMode] = useState<BuilderMode>('slots');
   const [selectedSlots, setSelectedSlots] = useState<Record<Category, ClothingItem | null>>({
@@ -87,13 +95,21 @@ export const LookBuilderScreen: React.FC = () => {
         zIndex: index + 1,
       }));
 
+      const previewUrl = await composeLookPreview(layers, items).catch(() => undefined);
+
       const saved = await api.saveLook({
         name: `Слот-образ ${new Date().toLocaleDateString('ru-RU')}`,
         layers,
+        previewUrl,
+        folderId,
       });
       addLook(saved);
       hapticSuccess();
       tg?.sendData?.(JSON.stringify({ event: 'LOOK_SAVED', lookId: saved.id }));
+      onSaved?.();
+    } catch (err) {
+      console.error(err);
+      haptic('rigid');
     } finally {
       setIsSaving(false);
     }
@@ -152,13 +168,21 @@ export const LookBuilderScreen: React.FC = () => {
     setIsSaving(true);
     haptic('heavy');
     try {
+      const previewUrl = await composeLookPreview(builderLayers, items).catch(() => undefined);
+
       const saved = await api.saveLook({
         name: `Коллаж ${new Date().toLocaleDateString('ru-RU')}`,
         layers: builderLayers,
+        previewUrl,
+        folderId,
       });
       addLook(saved);
       hapticSuccess();
       tg?.sendData?.(JSON.stringify({ event: 'LOOK_SAVED', lookId: saved.id }));
+      onSaved?.();
+    } catch (err) {
+      console.error(err);
+      haptic('rigid');
     } finally {
       setIsSaving(false);
     }
@@ -197,7 +221,11 @@ export const LookBuilderScreen: React.FC = () => {
             return (
               <div key={category} className="slot-card">
                 <div className="slot-info">
-                  <div className="slot-preview">
+                  <div
+                    className="slot-preview checker-bg"
+                    onClick={() => currentItem && setViewingItem(currentItem)}
+                    style={{ cursor: currentItem ? 'pointer' : 'default' }}
+                  >
                     {currentItem ? (
                       <img src={currentItem.imageUrl} alt={currentItem.name} />
                     ) : (
@@ -306,13 +334,29 @@ export const LookBuilderScreen: React.FC = () => {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="tray-item"
+                className="tray-item checker-bg"
+                style={{ position: 'relative' }}
                 onClick={() => {
                   haptic('light');
                   addToCanvas(item.id);
                 }}
               >
                 <img src={item.imageUrl} alt={item.name} />
+                <button
+                  className="view-eye"
+                  style={{ width: 20, height: 20, top: 3, left: 3 }}
+                  title="Открыть вещь"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    haptic('light');
+                    setViewingItem(item);
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
+                  </svg>
+                </button>
               </div>
             ))}
           </div>
@@ -338,6 +382,8 @@ export const LookBuilderScreen: React.FC = () => {
           </div>
         </div>
       )}
+
+      {viewingItem && <ItemDetailModal item={viewingItem} onClose={() => setViewingItem(null)} />}
     </div>
   );
 };

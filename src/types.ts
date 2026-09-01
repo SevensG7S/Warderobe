@@ -45,6 +45,15 @@ export interface Look {
   name: string;
   layers: LookLayer[];
   previewUrl?: string;
+  folderId?: string | null;
+  createdAt: string;
+}
+
+export interface LookFolder {
+  id: string;
+  userId: string;
+  name: string;
+  parentId: string | null;
   createdAt: string;
 }
 

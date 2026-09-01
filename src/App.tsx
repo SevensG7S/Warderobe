@@ -3,7 +3,7 @@ import { initTelegram, haptic } from './lib/telegram';
 import { useWardrobeStore } from './store/useWardrobeStore';
 import { ClosetScreen } from './components/ClosetScreen';
 import { AddScreen } from './components/AddScreen';
-import { LookBuilderScreen } from './components/LookBuilderScreen';
+import { LooksLibraryScreen } from './components/LooksLibraryScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 
 type Tab = 'closet' | 'add' | 'looks' | 'profile';
@@ -11,7 +11,7 @@ type Tab = 'closet' | 'add' | 'looks' | 'profile';
 const TAB_CONFIG: Record<Tab, { title: string; sub: (itemCount: number, lookCount: number) => string }> = {
   closet: { title: 'Гардероб', sub: (i) => `${i} шт.` },
   add: { title: 'Новая вещь', sub: () => 'Шаг 1 из 1' },
-  looks: { title: 'Конструктор', sub: () => 'Сборка лука' },
+  looks: { title: 'Луки', sub: (_, l) => `${l} образов` },
   profile: { title: 'Профиль', sub: (_, l) => `${l} образов` },
 };
 
@@ -19,10 +19,16 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<Tab>('closet');
   const items = useWardrobeStore((s) => s.items);
   const looks = useWardrobeStore((s) => s.looks);
+  const fetchItems = useWardrobeStore((s) => s.fetchItems);
+  const fetchLooks = useWardrobeStore((s) => s.fetchLooks);
+  const fetchFolders = useWardrobeStore((s) => s.fetchFolders);
 
   useEffect(() => {
     initTelegram();
-  }, []);
+    fetchItems();
+    fetchLooks();
+    fetchFolders();
+  }, [fetchItems, fetchLooks, fetchFolders]);
 
   const config = TAB_CONFIG[currentTab];
 
@@ -36,7 +42,7 @@ export const App: React.FC = () => {
       <main className="screen-container">
         {currentTab === 'closet' && <ClosetScreen onNavigateToAdd={() => setCurrentTab('add')} />}
         {currentTab === 'add' && <AddScreen onSuccess={() => setCurrentTab('closet')} />}
-        {currentTab === 'looks' && <LookBuilderScreen />}
+        {currentTab === 'looks' && <LooksLibraryScreen />}
         {currentTab === 'profile' && <ProfileScreen />}
       </main>
 

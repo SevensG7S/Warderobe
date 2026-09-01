@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { api } from '../lib/api';
 import { useWardrobeStore } from '../store/useWardrobeStore';
 import { haptic, hapticSuccess } from '../lib/telegram';
+import { removeImageBackground } from '../lib/bgRemoval';
 import { CATEGORY_LABELS, COLOR_OPTIONS, type Category } from '../types';
 
 interface AddScreenProps {
@@ -12,8 +13,9 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addItem = useWardrobeStore((s) => s.addItem);
 
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [bgRemoved, setBgRemoved] = useState(false);
   const [category, setCategory] = useState<Category>('top');
   const [color, setColor] = useState<string>(COLOR_OPTIONS[0].hex);
   const [name, setName] = useState('');
@@ -21,21 +23,35 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
     setFile(selected);
     setPreview(URL.createObjectURL(selected));
+    setBgRemoved(false);
     setIsProcessing(true);
     setStatusText('Удаляем фон…');
     haptic('medium');
 
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      const { blob, url } = await removeImageBackground(selected, (_key, current, total) => {
+        if (total > 0) {
+          const pct = Math.round((current / total) * 100);
+          setStatusText(`Удаляем фон… ${pct}%`);
+        }
+      });
+      setFile(blob);
+      setPreview(url);
+      setBgRemoved(true);
       setStatusText('✓ Фон удалён');
       hapticSuccess();
-    }, 1200);
+    } catch (err) {
+      console.error('Background removal failed, using original photo', err);
+      setStatusText('Не удалось удалить фон, используем оригинал');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -56,7 +72,7 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
       onSuccess();
     } catch (err) {
       console.error(err);
-      setStatusText('Ошибка сохранения');
+      setStatusText('Ошибка сохранения. Попробуйте фото поменьше.');
       haptic('rigid');
     } finally {
       setIsProcessing(false);
@@ -78,7 +94,7 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
         onClick={() => fileInputRef.current?.click()}
       >
         {preview ? (
-          <div className="preview-img">
+          <div className={`preview-img ${bgRemoved ? 'checker-bg' : ''}`}>
             <img src={preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             {isProcessing && <div className="scanline" />}
           </div>

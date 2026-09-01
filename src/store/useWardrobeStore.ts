@@ -1,23 +1,31 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
-import type { ClothingItem, Look, Category, LookLayer } from '../types';
+import type { ClothingItem, Look, Category, LookLayer, LookFolder } from '../types';
 
 interface WardrobeState {
   items: ClothingItem[];
   looks: Look[];
+  folders: LookFolder[];
   loading: boolean;
   activeCategory: Category | 'all';
   builderLayers: LookLayer[];
   selectedLayerItemId: string | null;
-  
+  currentFolderId: string | null;
+
   // Actions
   setActiveCategory: (c: Category | 'all') => void;
   fetchItems: () => Promise<void>;
   fetchLooks: () => Promise<void>;
+  fetchFolders: () => Promise<void>;
   addItem: (item: ClothingItem) => void;
   removeItem: (id: string) => Promise<void>;
   addLook: (look: Look) => void;
-  
+  removeLook: (id: string) => Promise<void>;
+  moveLook: (id: string, folderId: string | null) => Promise<void>;
+  createFolder: (name: string, parentId: string | null) => Promise<void>;
+  removeFolder: (id: string) => Promise<void>;
+  setCurrentFolderId: (id: string | null) => void;
+
   // Builder actions
   addToCanvas: (itemId: string) => void;
   updateLayer: (itemId: string, patch: Partial<LookLayer>) => void;
@@ -30,10 +38,12 @@ interface WardrobeState {
 export const useWardrobeStore = create<WardrobeState>((set, get) => ({
   items: [],
   looks: [],
+  folders: [],
   loading: false,
   activeCategory: 'all',
   builderLayers: [],
   selectedLayerItemId: null,
+  currentFolderId: null,
 
   setActiveCategory: (c) => set({ activeCategory: c }),
 
@@ -52,6 +62,11 @@ export const useWardrobeStore = create<WardrobeState>((set, get) => ({
     set({ looks });
   },
 
+  fetchFolders: async () => {
+    const folders = await api.listFolders();
+    set({ folders });
+  },
+
   addItem: (item) => set({ items: [item, ...get().items] }),
 
   removeItem: async (id) => {
@@ -60,6 +75,36 @@ export const useWardrobeStore = create<WardrobeState>((set, get) => ({
   },
 
   addLook: (look) => set({ looks: [look, ...get().looks] }),
+
+  removeLook: async (id) => {
+    await api.deleteLook(id);
+    set({ looks: get().looks.filter((l) => l.id !== id) });
+  },
+
+  moveLook: async (id, folderId) => {
+    const updated = await api.moveLook(id, folderId);
+    if (!updated) return;
+    set({ looks: get().looks.map((l) => (l.id === id ? updated : l)) });
+  },
+
+  createFolder: async (name, parentId) => {
+    const folder = await api.createFolder(name, parentId);
+    set({ folders: [folder, ...get().folders] });
+  },
+
+  removeFolder: async (id) => {
+    await api.deleteFolder(id);
+    // Луки из удалённой папки поднимаем на уровень выше, а не удаляем.
+    const removed = get().folders.find((f) => f.id === id);
+    set({
+      folders: get().folders.filter((f) => f.id !== id),
+      looks: get().looks.map((l) =>
+        l.folderId === id ? { ...l, folderId: removed?.parentId ?? null } : l
+      ),
+    });
+  },
+
+  setCurrentFolderId: (id) => set({ currentFolderId: id }),
 
   addToCanvas: (itemId) => {
     const exists = get().builderLayers.some((l) => l.itemId === itemId);
