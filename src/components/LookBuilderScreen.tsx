@@ -17,7 +17,7 @@ export const LookBuilderScreen: React.FC = () => {
   } = useWardrobeStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [lookName, setLookName] = useState('Образ на сегодня');
+  const [lookName] = useState('Образ на сегодня');
   const [isSaving, setIsSaving] = useState(false);
 
   // Drag-and-Drop / Pointer Events
