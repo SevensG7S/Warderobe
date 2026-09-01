@@ -4,13 +4,21 @@ import type { ClothingItem, Look, Category } from '../types';
 const API_URL = import.meta.env.VITE_API_URL as string | undefined;
 const USE_MOCKS = !API_URL;
 
-// Локальный кэш для автономного тестирования интерфейса
-const STORAGE_KEY_ITEMS = 'wardrobe_items_cache';
-const STORAGE_KEY_LOOKS = 'wardrobe_looks_cache';
+const STORAGE_KEY_ITEMS = 'tma_wardrobe_items_v3';
+const STORAGE_KEY_LOOKS = 'tma_wardrobe_looks_v3';
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 function getStoredItems(): ClothingItem[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY_ITEMS);
+    const raw = localStorage.getItem(STORAGE_KEY_ITEMS);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -19,13 +27,15 @@ function getStoredItems(): ClothingItem[] {
 
 function setStoredItems(items: ClothingItem[]) {
   try {
-    sessionStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
-  } catch {}
+    localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
+  } catch (err) {
+    console.warn('Storage quota exceeded', err);
+  }
 }
 
 function getStoredLooks(): Look[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY_LOOKS);
+    const raw = localStorage.getItem(STORAGE_KEY_LOOKS);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -34,8 +44,10 @@ function getStoredLooks(): Look[] {
 
 function setStoredLooks(looks: Look[]) {
   try {
-    sessionStorage.setItem(STORAGE_KEY_LOOKS, JSON.stringify(looks));
-  } catch {}
+    localStorage.setItem(STORAGE_KEY_LOOKS, JSON.stringify(looks));
+  } catch (err) {
+    console.warn('Storage quota exceeded', err);
+  }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -57,7 +69,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function delay<T>(v: T, ms = 300): Promise<T> {
+function delay<T>(v: T, ms = 200): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(v), ms));
 }
 
@@ -74,18 +86,18 @@ export const api = {
 
   async uploadItem(file: File, meta: { category: Category; color: string; brand?: string; name: string }): Promise<ClothingItem> {
     if (USE_MOCKS) {
-      const url = URL.createObjectURL(file);
+      const base64Url = await fileToBase64(file);
       const item: ClothingItem = {
         id: crypto.randomUUID(),
         userId: 'local_user',
-        imageUrl: url,
+        imageUrl: base64Url,
         createdAt: new Date().toISOString(),
         ...meta,
       };
       const existing = getStoredItems();
       const updated = [item, ...existing];
       setStoredItems(updated);
-      return delay(item, 800);
+      return delay(item, 400);
     }
     const form = new FormData();
     form.append('file', file);
