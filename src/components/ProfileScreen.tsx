@@ -26,7 +26,7 @@ export const ProfileScreen: React.FC = () => {
             {user ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Пользователь TMA'}
           </div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-dim)' }}>
-            {user?.username ? `@${user.username}` : 'Гардероб синхронизирован'}
+            {user?.username ? `@${user.username}` : 'Гардероб готов'}
           </div>
         </div>
       </div>
@@ -34,27 +34,27 @@ export const ProfileScreen: React.FC = () => {
       <div className="stat-row">
         <div className="stat-card">
           <div className="n">{items.length}</div>
-          <div className="l">Вещей</div>
+          <div className="l">Вещей в базе</div>
         </div>
         <div className="stat-card">
           <div className="n">{looks.length}</div>
-          <div className="l">Луков</div>
+          <div className="l">Образов</div>
         </div>
       </div>
 
-      <div className="sec-label">Сохраненные луки</div>
+      <div className="sec-label">Сохраненные образы</div>
       {looks.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-dim)', fontSize: '13px' }}>
-          У вас пока нет сохраненных образов
+          У вас пока нет сохранённых образов
         </div>
       ) : (
         <div className="grid">
           {looks.map((look) => (
             <div key={look.id} className="look-thumb">
               {look.previewUrl ? (
-                <img src={look.previewUrl} alt={look.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+                <img src={look.previewUrl} alt={look.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                '🖼️'
+                <span style={{ fontSize: '24px' }}>✨</span>
               )}
             </div>
           ))}

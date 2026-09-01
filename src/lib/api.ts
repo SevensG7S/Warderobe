@@ -4,6 +4,40 @@ import type { ClothingItem, Look, Category } from '../types';
 const API_URL = import.meta.env.VITE_API_URL as string | undefined;
 const USE_MOCKS = !API_URL;
 
+// Локальный кэш для автономного тестирования интерфейса
+const STORAGE_KEY_ITEMS = 'wardrobe_items_cache';
+const STORAGE_KEY_LOOKS = 'wardrobe_looks_cache';
+
+function getStoredItems(): ClothingItem[] {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY_ITEMS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setStoredItems(items: ClothingItem[]) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
+  } catch {}
+}
+
+function getStoredLooks(): Look[] {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY_LOOKS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setStoredLooks(looks: Look[]) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY_LOOKS, JSON.stringify(looks));
+  } catch {}
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData;
   const headers: Record<string, string> = {
@@ -15,11 +49,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-  });
-
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
     throw new Error(`API ${path} failed (${res.status}): ${errText}`);
@@ -27,25 +57,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// Начальные мок-данные
-const MOCK_ITEMS: ClothingItem[] = [
-  { id: '1', userId: 'tg_user', category: 'top', color: '#f6f3ec', brand: 'Uniqlo', name: 'Белая футболка', imageUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80', createdAt: new Date().toISOString() },
-  { id: '2', userId: 'tg_user', category: 'bottom', color: '#3a4a6b', brand: "Levi's", name: 'Джинсы 501', imageUrl: 'https://images.unsplash.com/photo-1542272604-780c96856592?w=500&auto=format&fit=crop&q=80', createdAt: new Date().toISOString() },
-  { id: '3', userId: 'tg_user', category: 'outerwear', color: '#c9b790', brand: 'Zara', name: 'Бежевый тренч', imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500&auto=format&fit=crop&q=80', createdAt: new Date().toISOString() },
-  { id: '4', userId: 'tg_user', category: 'shoes', color: '#e9e5da', brand: 'Nike', name: 'Air Force 1', imageUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500&auto=format&fit=crop&q=80', createdAt: new Date().toISOString() },
-];
-
-const MOCK_LOOKS: Look[] = [];
-
-function delay<T>(v: T, ms = 400): Promise<T> {
+function delay<T>(v: T, ms = 300): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(v), ms));
 }
 
 export const api = {
   async listItems(category?: Category): Promise<ClothingItem[]> {
     if (USE_MOCKS) {
-      const filtered = category ? MOCK_ITEMS.filter((i) => i.category === category) : MOCK_ITEMS;
-      return delay([...filtered]);
+      const items = getStoredItems();
+      const filtered = category ? items.filter((i) => i.category === category) : items;
+      return delay(filtered);
     }
     const qs = category ? `?category=${category}` : '';
     return request<ClothingItem[]>(`/items${qs}`);
@@ -56,14 +77,15 @@ export const api = {
       const url = URL.createObjectURL(file);
       const item: ClothingItem = {
         id: crypto.randomUUID(),
-        userId: 'tg_user',
+        userId: 'local_user',
         imageUrl: url,
-        thumbUrl: url,
         createdAt: new Date().toISOString(),
         ...meta,
       };
-      MOCK_ITEMS.unshift(item);
-      return delay(item, 1500);
+      const existing = getStoredItems();
+      const updated = [item, ...existing];
+      setStoredItems(updated);
+      return delay(item, 800);
     }
     const form = new FormData();
     form.append('file', file);
@@ -76,15 +98,16 @@ export const api = {
 
   async deleteItem(id: string): Promise<void> {
     if (USE_MOCKS) {
-      const idx = MOCK_ITEMS.findIndex((i) => i.id === id);
-      if (idx >= 0) MOCK_ITEMS.splice(idx, 1);
+      const existing = getStoredItems();
+      const updated = existing.filter((i) => i.id !== id);
+      setStoredItems(updated);
       return delay(undefined);
     }
     await request<void>(`/items/${id}`, { method: 'DELETE' });
   },
 
   async listLooks(): Promise<Look[]> {
-    if (USE_MOCKS) return delay([...MOCK_LOOKS]);
+    if (USE_MOCKS) return delay(getStoredLooks());
     return request<Look[]>('/looks');
   },
 
@@ -92,11 +115,12 @@ export const api = {
     if (USE_MOCKS) {
       const saved: Look = {
         id: crypto.randomUUID(),
-        userId: 'tg_user',
+        userId: 'local_user',
         createdAt: new Date().toISOString(),
         ...look,
       };
-      MOCK_LOOKS.unshift(saved);
+      const existing = getStoredLooks();
+      setStoredLooks([saved, ...existing]);
       return delay(saved);
     }
     return request<Look>('/looks', { method: 'POST', body: JSON.stringify(look) });

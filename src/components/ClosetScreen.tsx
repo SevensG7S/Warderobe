@@ -1,12 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWardrobeStore } from '../store/useWardrobeStore';
-import { haptic } from '../lib/telegram';
+import { haptic, hapticSuccess } from '../lib/telegram';
 import { CATEGORY_LABELS, type Category } from '../types';
 
 const CATEGORIES: Array<Category | 'all'> = ['all', 'top', 'bottom', 'shoes', 'accessory', 'outerwear', 'dress'];
 
-export const ClosetScreen: React.FC = () => {
-  const { items, activeCategory, setActiveCategory, fetchItems, loading } = useWardrobeStore();
+interface ClosetScreenProps {
+  onNavigateToAdd: () => void;
+}
+
+export const ClosetScreen: React.FC<ClosetScreenProps> = ({ onNavigateToAdd }) => {
+  const { items, activeCategory, setActiveCategory, fetchItems, removeItem, loading } = useWardrobeStore();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -15,6 +20,18 @@ export const ClosetScreen: React.FC = () => {
   const filteredItems = activeCategory === 'all' 
     ? items 
     : items.filter((it) => it.category === activeCategory);
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    haptic('medium');
+    setDeletingId(id);
+    try {
+      await removeItem(id);
+      hapticSuccess();
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="screen-content">
@@ -34,41 +51,43 @@ export const ClosetScreen: React.FC = () => {
         ))}
       </div>
 
-      {/* Сетка вещей */}
+      {/* Список вещей или Empty State */}
       {loading && items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)' }}>
-          Загрузка гардероба...
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-dim)', fontSize: '14px' }}>
+          Загрузка гардероба…
         </div>
       ) : filteredItems.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)' }}>
-          <p style={{ fontSize: '15px', fontWeight: 600 }}>В этой категории пока пусто</p>
-          <p style={{ fontSize: '13px' }}>Добавьте фото вашей первой вещи через вкладку «Добавить»</p>
+        <div className="empty-state">
+          <div className="icon-box">🧥</div>
+          <h3>В гардеробе пока пусто</h3>
+          <p>
+            {activeCategory === 'all'
+              ? 'Добавьте первую вещь, чтобы составлять образы'
+              : `В категории «${CATEGORY_LABELS[activeCategory as Category]}» пока ничего нет`}
+          </p>
+          <button className="btn-primary" style={{ marginTop: 0, width: 'auto', padding: '12px 24px' }} onClick={onNavigateToAdd}>
+            + Добавить вещь
+          </button>
         </div>
       ) : (
         <div className="grid">
-          {filteredItems.map((item, idx) => (
-            <div
-              key={item.id}
-              className="item-card"
-              style={{
-                '--r': `${(idx % 2 === 0 ? -1 : 1) * ((idx % 3) * 0.6 + 0.6)}deg`,
-              } as React.CSSProperties}
-              onClick={() => haptic('light')}
-            >
-              <span className="tag" style={{ backgroundColor: item.color }} />
+          {filteredItems.map((item) => (
+            <div key={item.id} className="item-card" onClick={() => haptic('light')}>
+              <button
+                className="delete-btn"
+                title="Удалить"
+                disabled={deletingId === item.id}
+                onClick={(e) => handleDelete(e, item.id)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
               <div className="thumb">
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                ) : (
-                  '👕'
-                )}
+                <img src={item.imageUrl} alt={item.name} />
               </div>
               <div className="meta">
-                <div className="brand">{item.brand || 'Без бренда'}</div>
+                <div className="brand">{item.brand || 'Гардероб'}</div>
                 <div className="name">{item.name}</div>
               </div>
             </div>

@@ -9,10 +9,10 @@ import { ProfileScreen } from './components/ProfileScreen';
 type Tab = 'closet' | 'add' | 'looks' | 'profile';
 
 const TAB_CONFIG: Record<Tab, { title: string; sub: (itemCount: number, lookCount: number) => string }> = {
-  closet: { title: 'Гардероб', sub: (i) => `${i} вещей` },
+  closet: { title: 'Гардероб', sub: (i) => `${i} шт.` },
   add: { title: 'Новая вещь', sub: () => 'Шаг 1 из 1' },
-  looks: { title: 'Конструктор', sub: () => 'Новый лук' },
-  profile: { title: 'Профиль', sub: (_, l) => `${l} луков` },
+  looks: { title: 'Конструктор', sub: () => 'Сборка лука' },
+  profile: { title: 'Профиль', sub: (_, l) => `${l} образов` },
 };
 
 export const App: React.FC = () => {
@@ -28,21 +28,18 @@ export const App: React.FC = () => {
 
   return (
     <div id="app">
-      {/* Top Bar */}
       <header className="topbar">
         <h1 className="display">{config.title}</h1>
         <span className="count">{config.sub(items.length, looks.length)}</span>
       </header>
 
-      {/* Screen Content */}
       <main className="screen-container">
-        {currentTab === 'closet' && <ClosetScreen />}
+        {currentTab === 'closet' && <ClosetScreen onNavigateToAdd={() => setCurrentTab('add')} />}
         {currentTab === 'add' && <AddScreen onSuccess={() => setCurrentTab('closet')} />}
         {currentTab === 'looks' && <LookBuilderScreen />}
         {currentTab === 'profile' && <ProfileScreen />}
       </main>
 
-      {/* Bottom Navigation */}
       <nav className="tabbar">
         <button
           className={`tab ${currentTab === 'closet' ? 'active' : ''}`}

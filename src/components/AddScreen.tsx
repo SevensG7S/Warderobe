@@ -31,33 +31,32 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
     setStatusText('Удаляем фон…');
     haptic('medium');
 
-    // Имитируем быстрый предпросмотр завершения обработки для UI
     setTimeout(() => {
       setIsProcessing(false);
-      setStatusText('✓ Фон удален');
+      setStatusText('✓ Фон удалён');
       hapticSuccess();
-    }, 1600);
+    }, 1200);
   };
 
   const handleSubmit = async () => {
     if (!file || !name.trim()) return;
     setIsProcessing(true);
-    setStatusText('Сохранение вещи…');
+    setStatusText('Сохраняем вещь…');
     haptic('heavy');
 
     try {
-      const createdItem = await api.uploadItem(file, {
+      const created = await api.uploadItem(file, {
         category,
         color,
         brand: brand.trim() || undefined,
         name: name.trim(),
       });
-      addItem(createdItem);
+      addItem(created);
       hapticSuccess();
       onSuccess();
     } catch (err) {
       console.error(err);
-      setStatusText('Ошибка загрузки');
+      setStatusText('Ошибка сохранения');
       haptic('rigid');
     } finally {
       setIsProcessing(false);
@@ -80,21 +79,17 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
       >
         {preview ? (
           <div className="preview-img">
-            <img
-              src={preview}
-              alt="Preview"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
+            <img src={preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             {isProcessing && <div className="scanline" />}
           </div>
         ) : (
           <>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b8b8b" strokeWidth="1.6">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
               <path d="M12 16V4M12 4L7 9M12 4l5 5" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
             </svg>
-            <div style={{ fontSize: '14px', fontWeight: 600 }}>Загрузите фото вещи</div>
-            <div style={{ fontSize: '12px', color: '#5c584f' }}>Фон удалится автоматически</div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>Загрузите фото вещи</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Фон будет удалён автоматически</div>
           </>
         )}
       </div>
@@ -133,7 +128,6 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
               key={c.hex}
               type="button"
               className={`pill-select ${color === c.hex ? 'sel' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               onClick={() => {
                 haptic('light');
                 setColor(c.hex);
@@ -157,10 +151,10 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
       </div>
 
       <div className="field">
-        <label>Бренд (необязательно)</label>
+        <label>Бренд</label>
         <input
           className="text-input"
-          placeholder="Например, Pull&Bear"
+          placeholder="Например, Bershka"
           value={brand}
           onChange={(e) => setBrand(e.target.value)}
         />
@@ -171,7 +165,7 @@ export const AddScreen: React.FC<AddScreenProps> = ({ onSuccess }) => {
         disabled={!file || !name.trim() || isProcessing}
         onClick={handleSubmit}
       >
-        {isProcessing ? 'Обработка...' : 'Сохранить в гардероб'}
+        {isProcessing ? 'Сохранение…' : 'Сохранить в гардероб'}
       </button>
     </div>
   );
