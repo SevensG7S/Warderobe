@@ -1,122 +1,103 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { initTelegram, haptic } from './lib/telegram';
+import { useWardrobeStore } from './store/useWardrobeStore';
+import { ClosetScreen } from './components/ClosetScreen';
+import { AddScreen } from './components/AddScreen';
+import { LookBuilderScreen } from './components/LookBuilderScreen';
+import { ProfileScreen } from './components/ProfileScreen';
 
-function App() {
-  const [count, setCount] = useState(0)
+type Tab = 'closet' | 'add' | 'looks' | 'profile';
+
+const TAB_CONFIG: Record<Tab, { title: string; sub: (itemCount: number, lookCount: number) => string }> = {
+  closet: { title: 'Гардероб', sub: (i) => `${i} вещей` },
+  add: { title: 'Новая вещь', sub: () => 'Шаг 1 из 1' },
+  looks: { title: 'Конструктор', sub: () => 'Новый лук' },
+  profile: { title: 'Профиль', sub: (_, l) => `${l} луков` },
+};
+
+export const App: React.FC = () => {
+  const [currentTab, setCurrentTab] = useState<Tab>('closet');
+  const items = useWardrobeStore((s) => s.items);
+  const looks = useWardrobeStore((s) => s.looks);
+
+  useEffect(() => {
+    initTelegram();
+  }, []);
+
+  const config = TAB_CONFIG[currentTab];
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
+    <div id="app">
+      {/* Top Bar */}
+      <header className="topbar">
+        <h1 className="display">{config.title}</h1>
+        <span className="count">{config.sub(items.length, looks.length)}</span>
+      </header>
+
+      {/* Screen Content */}
+      <main className="screen-container">
+        {currentTab === 'closet' && <ClosetScreen />}
+        {currentTab === 'add' && <AddScreen onSuccess={() => setCurrentTab('closet')} />}
+        {currentTab === 'looks' && <LookBuilderScreen />}
+        {currentTab === 'profile' && <ProfileScreen />}
+      </main>
+
+      {/* Bottom Navigation */}
+      <nav className="tabbar">
         <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          className={`tab ${currentTab === 'closet' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('closet');
+          }}
         >
-          Count is {count}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M6 4l3 2 3-2 3 2 3-2v16H6V4z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Гардероб
         </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
+        <button
+          className={`tab ${currentTab === 'add' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('add');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="12" cy="12" r="9" strokeLinecap="round" />
+            <path d="M12 8v8M8 12h8" strokeLinecap="round" />
           </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
+          Добавить
+        </button>
+        <button
+          className={`tab ${currentTab === 'looks' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('looks');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <path d="M4 14l4-4 4 4 4-6 4 6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+          Луки
+        </button>
+        <button
+          className={`tab ${currentTab === 'profile' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('profile');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="12" cy="8" r="3.4" />
+            <path d="M5 20c1.5-4 4.2-6 7-6s5.5 2 7 6" strokeLinecap="round" />
+          </svg>
+          Профиль
+        </button>
+      </nav>
+    </div>
+  );
+};
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
-
-export default App
+export default App;
