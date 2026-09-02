@@ -8,6 +8,16 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Таблица папок для луков
+CREATE TABLE IF NOT EXISTS folders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    parent_id TEXT REFERENCES folders(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
+
 -- Таблица вещей гардероба
 CREATE TABLE IF NOT EXISTS items (
     id TEXT PRIMARY KEY,
@@ -29,6 +39,8 @@ CREATE TABLE IF NOT EXISTS looks (
     name TEXT NOT NULL,
     layers JSONB NOT NULL DEFAULT '[]'::jsonb,
     preview_url TEXT,
+    folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_looks_user ON looks(user_id);
+CREATE INDEX IF NOT EXISTS idx_looks_folder ON looks(folder_id);

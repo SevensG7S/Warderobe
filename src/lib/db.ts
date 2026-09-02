@@ -1,8 +1,3 @@
-// Простое хранилище на IndexedDB.
-// localStorage не годится для фотографий: у него маленькая квота (~5-10МБ),
-// и при её превышении запись падает ТИХО (данные просто не сохраняются).
-// IndexedDB даёт на порядки больше места и куда надёжнее хранит бинарные данные.
-
 const DB_NAME = 'wardrobe_db';
 const DB_VERSION = 1;
 
@@ -31,7 +26,10 @@ function openDb(): Promise<IDBDatabase> {
       }
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      dbPromise = null;
+      reject(req.error);
+    };
   });
   return dbPromise;
 }
@@ -40,9 +38,11 @@ export async function dbGetAll<T>(store: string): Promise<T[]> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readonly');
-    const req = tx.objectStore(store).getAll();
+    const os = tx.objectStore(store);
+    const req = os.getAll();
     req.onsuccess = () => resolve(req.result as T[]);
     req.onerror = () => reject(req.error);
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -50,9 +50,12 @@ export async function dbPut<T>(store: string, value: T): Promise<T> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).put(value);
+    const os = tx.objectStore(store);
+    const req = os.put(value);
+    req.onerror = () => reject(req.error);
     tx.oncomplete = () => resolve(value);
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
   });
 }
 
@@ -73,10 +76,13 @@ export async function dbUpdate<T extends { id: string }>(
         return;
       }
       const updated = updater(current);
-      os.put(updated);
-      resolve(updated);
+      const putReq = os.put(updated);
+      putReq.onerror = () => reject(putReq.error);
     };
     getReq.onerror = () => reject(getReq.error);
+    tx.oncomplete = () => {};
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
   });
 }
 
@@ -84,14 +90,15 @@ export async function dbDelete(store: string, id: string): Promise<void> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).delete(id);
+    const os = tx.objectStore(store);
+    const req = os.delete(id);
+    req.onerror = () => reject(req.error);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
   });
 }
 
-// Одноразовая миграция старых данных из localStorage (если приложение
-// раньше уже успело туда что-то записать) — чтобы у пользователя ничего не пропало.
 export async function migrateFromLocalStorageOnce() {
   try {
     const flag = 'tma_wardrobe_migrated_v1';
