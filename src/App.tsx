@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { initTelegram, haptic } from './lib/telegram';
 import { useWardrobeStore } from './store/useWardrobeStore';
+import { HomeScreen } from './components/HomeScreen';
 import { ClosetScreen } from './components/ClosetScreen';
 import { AddScreen } from './components/AddScreen';
 import { LooksLibraryScreen } from './components/LooksLibraryScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 
-type Tab = 'closet' | 'add' | 'looks' | 'profile';
+type Tab = 'home' | 'closet' | 'add' | 'looks' | 'profile';
 
-const TAB_CONFIG: Record<Tab, { title: string; sub: (itemCount: number, lookCount: number) => string }> = {
+const TAB_CONFIG: Record<Tab, { title: string; sub: (itemCount: number, lookCount: number) => string } | null> = {
+  home: null,
   closet: { title: 'Гардероб', sub: (i) => `${i} шт.` },
   add: { title: 'Новая вещь', sub: () => 'Шаг 1 из 1' },
   looks: { title: 'Луки', sub: (_, l) => `${l} образов` },
@@ -16,7 +18,7 @@ const TAB_CONFIG: Record<Tab, { title: string; sub: (itemCount: number, lookCoun
 };
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<Tab>('closet');
+  const [currentTab, setCurrentTab] = useState<Tab>('home');
   const items = useWardrobeStore((s) => s.items);
   const looks = useWardrobeStore((s) => s.looks);
   const fetchItems = useWardrobeStore((s) => s.fetchItems);
@@ -34,12 +36,22 @@ export const App: React.FC = () => {
 
   return (
     <div id="app">
-      <header className="topbar">
-        <h1 className="display">{config.title}</h1>
-        <span className="count">{config.sub(items.length, looks.length)}</span>
-      </header>
+      {config && (
+        <header className="topbar">
+          <h1 className="display">{config.title}</h1>
+          <span className="count">{config.sub(items.length, looks.length)}</span>
+        </header>
+      )}
 
       <main className="screen-container">
+        {currentTab === 'home' && (
+          <HomeScreen
+            onNavigateToAdd={() => setCurrentTab('add')}
+            onNavigateToCloset={() => setCurrentTab('closet')}
+            onNavigateToLooks={() => setCurrentTab('looks')}
+            onOpenLook={() => setCurrentTab('looks')}
+          />
+        )}
         {currentTab === 'closet' && <ClosetScreen onNavigateToAdd={() => setCurrentTab('add')} />}
         {currentTab === 'add' && <AddScreen onSuccess={() => setCurrentTab('closet')} />}
         {currentTab === 'looks' && <LooksLibraryScreen />}
@@ -47,6 +59,18 @@ export const App: React.FC = () => {
       </main>
 
       <nav className="tabbar">
+        <button
+          className={`tab ${currentTab === 'home' ? 'active' : ''}`}
+          onClick={() => {
+            haptic('light');
+            setCurrentTab('home');
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1v-9z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Главная
+        </button>
         <button
           className={`tab ${currentTab === 'closet' ? 'active' : ''}`}
           onClick={() => {

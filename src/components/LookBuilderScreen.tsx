@@ -9,10 +9,12 @@ import type { Category, ClothingItem } from '../types';
 type BuilderMode = 'slots' | 'canvas';
 
 const SLOT_CONFIG: { category: Category; label: string; icon: string }[] = [
+  { category: 'outerwear', label: 'Верхняя одежда', icon: '🧥' },
   { category: 'top', label: 'Верх', icon: '👕' },
   { category: 'bottom', label: 'Низ', icon: '👖' },
   { category: 'shoes', label: 'Обувь', icon: '👟' },
   { category: 'accessory', label: 'Аксессуар', icon: '🧢' },
+  { category: 'dress', label: 'Платье', icon: '👗' },
 ];
 
 interface LookBuilderScreenProps {
@@ -44,6 +46,7 @@ export const LookBuilderScreen: React.FC<LookBuilderScreenProps> = ({ folderId =
     outerwear: null,
     dress: null,
   });
+  const [pinnedSlots, setPinnedSlots] = useState<Record<string, boolean>>({});
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,12 +74,18 @@ export const LookBuilderScreen: React.FC<LookBuilderScreenProps> = ({ folderId =
     haptic('medium');
     const newSlots = { ...selectedSlots };
     SLOT_CONFIG.forEach(({ category }) => {
+      if (pinnedSlots[category]) return;
       const catItems = items.filter((i) => i.category === category);
       if (catItems.length > 0) {
         newSlots[category] = catItems[Math.floor(Math.random() * catItems.length)];
       }
     });
     setSelectedSlots(newSlots);
+  };
+
+  const handleTogglePin = (cat: Category) => {
+    haptic('light');
+    setPinnedSlots((prev) => ({ ...prev, [cat]: !prev[cat] }));
   };
 
   const handleSaveSlotLook = async () => {
@@ -217,48 +226,76 @@ export const LookBuilderScreen: React.FC<LookBuilderScreenProps> = ({ folderId =
           {SLOT_CONFIG.map(({ category, label, icon }) => {
             const currentItem = selectedSlots[category];
             const catItems = items.filter((i) => i.category === category);
+            if (catItems.length === 0) return null;
+
+            const currentIndex = currentItem ? catItems.findIndex((i) => i.id === currentItem.id) : -1;
+            const prevItem = catItems.length > 1 ? catItems[(currentIndex - 1 + catItems.length) % catItems.length] : null;
+            const nextItem = catItems.length > 1 ? catItems[(currentIndex + 1) % catItems.length] : null;
+            const isPinned = !!pinnedSlots[category];
 
             return (
-              <div key={category} className="slot-card">
-                <div className="slot-info">
-                  <div
-                    className="slot-preview checker-bg"
-                    onClick={() => currentItem && setViewingItem(currentItem)}
-                    style={{ cursor: currentItem ? 'pointer' : 'default' }}
-                  >
+              <div key={category} className="slot-stack-row">
+                {!currentItem && <div className="slot-stack-label">Добавить: {label}</div>}
+                <div className="slot-stack-carousel">
+                  {prevItem && (
+                    <button
+                      className="slot-peek left"
+                      onClick={() => handleCycleSlot(category, -1)}
+                      aria-label="Предыдущая вещь"
+                    >
+                      <img src={prevItem.imageUrl} alt="" />
+                    </button>
+                  )}
+
+                  <div className="slot-stack-main">
                     {currentItem ? (
-                      <img src={currentItem.imageUrl} alt={currentItem.name} />
+                      <>
+                        <img
+                          src={currentItem.imageUrl}
+                          alt={currentItem.name}
+                          onClick={() => setViewingItem(currentItem)}
+                        />
+                        <button
+                          className={`slot-pin-btn ${isPinned ? 'active' : ''}`}
+                          onClick={() => handleTogglePin(category)}
+                          title="Закрепить вещь"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                            <path d="M12 2l1.5 5.5L19 9l-4.5 3.5L16 18l-4-3-4 3 1.5-5.5L5 9l5.5-1.5L12 2z" />
+                          </svg>
+                        </button>
+                      </>
                     ) : (
-                      <span style={{ fontSize: '20px' }}>{icon}</span>
+                      <button
+                        className="slot-stack-empty"
+                        onClick={() => handleCycleSlot(category, 1)}
+                      >
+                        <span>{icon}</span>
+                      </button>
                     )}
                   </div>
-                  <div>
-                    <div className="slot-label">{label}</div>
-                    <div className="slot-name">
-                      {currentItem ? currentItem.name : catItems.length === 0 ? 'Нет вещей' : 'Не выбрано'}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="slot-actions">
-                  <button
-                    className="slot-btn"
-                    disabled={catItems.length === 0}
-                    onClick={() => handleCycleSlot(category, -1)}
-                  >
-                    ◀
-                  </button>
-                  <button
-                    className="slot-btn"
-                    disabled={catItems.length === 0}
-                    onClick={() => handleCycleSlot(category, 1)}
-                  >
-                    ▶
-                  </button>
+                  {nextItem && (
+                    <button
+                      className="slot-peek right"
+                      onClick={() => handleCycleSlot(category, 1)}
+                      aria-label="Следующая вещь"
+                    >
+                      <img src={nextItem.imageUrl} alt="" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
+
+          {SLOT_CONFIG.every(({ category }) => items.filter((i) => i.category === category).length === 0) && (
+            <div className="empty-state">
+              <div className="icon-box">🧵</div>
+              <h3>Добавьте вещи</h3>
+              <p>Чтобы собрать образ по слотам, сначала загрузите вещи в гардероб</p>
+            </div>
+          )}
 
           <div className="look-actions">
             <button className="btn-secondary" onClick={handleRandomizeSlots}>
